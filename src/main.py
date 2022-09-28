@@ -1,7 +1,6 @@
 import requests_cache
 import re
 import logging
-from collections import defaultdict
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from tqdm import tqdm
@@ -154,7 +153,6 @@ def pep(session):
     ]
     results.extend(counter.items())
     return results
-
 
 
 MODE_TO_FUNCTION = {
