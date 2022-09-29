@@ -1,53 +1,41 @@
-import requests_cache
-import re
 import logging
-from bs4 import BeautifulSoup
+import re
+from collections import defaultdict
 from urllib.parse import urljoin
+
+import requests_cache
+from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from constants import (
-    BASE_DIR,
-    MAIN_DOC_URL,
-    EXPECTED_STATUS,
-    PEP_URL,
-    PATTERN,
-)
 from configs import configure_argument_parser, configure_logging
+from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PATTERN, PEP_URL
 from outputs import control_output
-from utils import get_response, find_tag, check_key
+from utils import check_key, find_tag, get_response
 
 
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-
     response = get_response(session, whats_new_url)
     if response is None:
         return
     soup = BeautifulSoup(response.text, features='lxml')
-
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
-
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
-
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'})
-
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
-
     for section in tqdm(sections_by_python):
         version_a_tag = find_tag(section, 'a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         response = get_response(session, version_link)
         if response is None:
-
             continue
         soup = BeautifulSoup(response.text, features='lxml')
         h1 = find_tag(soup, 'h1')
         dl = find_tag(soup, 'dl')
         dl_text = dl.text.replace('\n', ' ')
         results.append((version_link, h1.text, dl_text))
-
     return results
 
 
@@ -115,13 +103,11 @@ def pep(session):
     response = get_response(session, PEP_URL)
     if response is None:
         return
-
     soup = BeautifulSoup(response.text, "lxml")
     section_tag = find_tag(soup, "section", attrs={"id": "numerical-index"})
     body_table = find_tag(section_tag, "tbody")
     rows = body_table.find_all("tr")
-
-    counter = {}
+    counter = defaultdict(list)
     for string in tqdm(rows):
         td_tag = find_tag(string, "td")
         href_object = td_tag.find_next_sibling("td")
@@ -130,7 +116,6 @@ def pep(session):
         response = get_response(session, link_object)
         if response is None:
             return
-
         soup = BeautifulSoup(response.text, "lxml")
         start = find_tag(soup, text=PATTERN).parent
         dt = start.find_next_sibling("dd").text
